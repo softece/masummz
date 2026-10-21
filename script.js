@@ -169,11 +169,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const baHandle = document.getElementById('baHandle');
 
   if (baSlider && baAfterLayer && baHandle) {
-    baSlider.addEventListener('input', (e) => {
-      const value = e.target.value;
+    const updateBASlider = (value) => {
       baAfterLayer.style.clipPath = `polygon(0 0, ${value}% 0, ${value}% 100%, 0 100%)`;
       baHandle.style.left = `${value}%`;
-    });
+    };
+
+    baSlider.addEventListener('input', (e) => updateBASlider(e.target.value));
+    baSlider.addEventListener('change', (e) => updateBASlider(e.target.value));
   }
 
   // 6. Web Audio API SFX Synthesizer (Instant SFX Preview)

@@ -829,7 +829,8 @@ ul {
 .ba-card {
   position: relative;
   width: 100%;
-  height: 420px;
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
   border-radius: var(--border-radius-md);
   overflow: hidden;
   border: 2px solid var(--primary-green);
@@ -854,10 +855,14 @@ ul {
   clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
 }
 
-.ba-video {
+.ba-video,
+.ba-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .raw-filter {
@@ -1973,7 +1978,8 @@ ul {
   }
 
   .ba-card {
-    height: 300px;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 
   .tools-grid {
