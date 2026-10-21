@@ -486,6 +486,9 @@ ul {
   border: 3px solid var(--primary-green);
   box-shadow: 0 0 55px var(--glow-color), inset 0 0 35px var(--glow-color);
   animation: pulseGlow 4s infinite ease-in-out;
+  z-index: 1;
+  -webkit-mask-image: linear-gradient(to bottom, #000 50%, rgba(0, 0, 0, 0.6) 72%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 50%, rgba(0, 0, 0, 0.6) 72%, transparent 92%);
 }
 
 @keyframes pulseGlow {
@@ -505,8 +508,8 @@ ul {
   object-fit: contain;
   z-index: 2;
   filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.95));
-  -webkit-mask-image: radial-gradient(ellipse 95% 82% at 50% 36%, #000 50%, rgba(0, 0, 0, 0.85) 62%, rgba(0, 0, 0, 0.25) 78%, transparent 92%);
-  mask-image: radial-gradient(ellipse 95% 82% at 50% 36%, #000 50%, rgba(0, 0, 0, 0.85) 62%, rgba(0, 0, 0, 0.25) 78%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 85%, rgba(0, 0, 0, 0.8) 92%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 85%, rgba(0, 0, 0, 0.8) 92%, transparent 100%);
 }
 
 /* Floating Identity / Trust Pill Badge (Anchors portrait bottom seamlessly) */
