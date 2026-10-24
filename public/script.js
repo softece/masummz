@@ -176,6 +176,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     baSlider.addEventListener('input', (e) => updateBASlider(e.target.value));
     baSlider.addEventListener('change', (e) => updateBASlider(e.target.value));
+
+    // Drag anywhere on the image (touch + mouse); iOS range inputs only respond to the thumb otherwise
+    let baDragging = false;
+    const setFromPointer = (clientX) => {
+      const rect = baSlider.getBoundingClientRect();
+      const percent = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+      baSlider.value = percent;
+      updateBASlider(percent);
+    };
+
+    baSlider.addEventListener('pointerdown', (e) => {
+      baDragging = true;
+      baSlider.setPointerCapture(e.pointerId);
+      setFromPointer(e.clientX);
+    });
+    baSlider.addEventListener('pointermove', (e) => {
+      if (baDragging) setFromPointer(e.clientX);
+    });
+    const stopDrag = () => { baDragging = false; };
+    baSlider.addEventListener('pointerup', stopDrag);
+    baSlider.addEventListener('pointercancel', stopDrag);
   }
 
   // 6. Web Audio API SFX Synthesizer (Instant SFX Preview)
