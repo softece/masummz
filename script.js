@@ -1,6 +1,17 @@
 // Masum Mz Portfolio - Interactive Video Editor Features & Audio Synthesizer
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 0. Logo click -> full page refresh (start from top)
+  const logoLink = document.querySelector('.logo');
+  if (logoLink) {
+    logoLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      window.scrollTo(0, 0);
+      window.location.href = window.location.pathname;
+    });
+  }
+
   // 1. Mobile Navbar Toggle
   const menuToggle = document.getElementById('menuToggle');
   const navLinks = document.getElementById('navLinks');
