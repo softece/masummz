@@ -584,6 +584,12 @@ document.addEventListener('DOMContentLoaded', () => {
           </iframe>`;
   }
 
+  // Card titles: drop the repeated "| Masum Mz" brand suffix (it's his own portfolio)
+  function shortCardTitle(title) {
+    const t = String(title || '').replace(/\s*[|\-–—]\s*masum\s*mz\s*$/i, '').trim();
+    return t || String(title || '');
+  }
+
   function renderPortfolio() {
     if (!portfolioGrid) return;
     const projects = getActiveProjects();
@@ -636,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${mediaElement}
           </div>
           <div class="portfolio-info">
-            <h3>${escapeHtml(item.title)}</h3>
+            <h3 title="${escapeHtml(item.title)}">${escapeHtml(shortCardTitle(item.title))}</h3>
             ${metaHtml ? `<p class="portfolio-meta">${metaHtml}</p>` : ''}
           </div>
         </div>
