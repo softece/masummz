@@ -550,6 +550,40 @@ document.addEventListener('DOMContentLoaded', () => {
     return DEFAULT_PORTFOLIO_PROJECTS;
   }
 
+  // Player URL used when a card's play button is clicked (autoplay because the user clicked)
+  function getInlinePlayerSrc(parsed) {
+    if (parsed.provider === 'youtube') return `https://www.youtube.com/embed/${parsed.videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1`;
+    if (parsed.provider === 'vimeo') return `https://player.vimeo.com/video/${parsed.videoId}?autoplay=1`;
+    if (parsed.provider === 'gdrive') return `https://drive.google.com/file/d/${parsed.fileId}/preview`;
+    if (parsed.provider === 'direct') return parsed.url;
+    return '';
+  }
+
+  function buildInlinePlayer(parsed, title, autoplay) {
+    const src = getInlinePlayerSrc(parsed);
+    if (parsed.provider === 'direct') {
+      return `
+          <video 
+            class="portfolio-video" 
+            src="${escapeHtml(src)}" 
+            poster="${escapeHtml(parsed.thumbnailUrl || '')}" 
+            controls 
+            playsinline 
+            ${autoplay ? 'autoplay' : 'preload="metadata"'}>
+          </video>`;
+    }
+    const finalSrc = autoplay ? src : src.replace(/([?&])autoplay=1&?/, '$1').replace(/[?&]$/, '');
+    return `
+          <iframe 
+            src="${escapeHtml(finalSrc)}" 
+            title="${escapeHtml(title)}" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" 
+            allowfullscreen 
+            ${autoplay ? '' : 'loading="lazy"'}>
+          </iframe>`;
+  }
+
   function renderPortfolio() {
     if (!portfolioGrid) return;
     const projects = getActiveProjects();
@@ -559,46 +593,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const isVideo = parsed.type === 'video';
       const categoryLabel = item.categoryName || (item.category === 'shorts' ? 'Shorts / Reels' : item.category === 'thumbnail' ? 'Thumbnail Design' : 'Talking Head');
 
+      const playerSrc = getInlinePlayerSrc(parsed);
+      const posterSrc = isVideo ? (parsed.thumbnailUrl || '') : '';
+      const fallbackPoster = parsed.provider === 'youtube' ? `https://img.youtube.com/vi/${parsed.videoId}/hqdefault.jpg` : '';
+
       let mediaElement;
-      if (parsed.isEmbed && parsed.provider === 'youtube') {
+      if (isVideo && (posterSrc || parsed.provider === 'direct')) {
+        // Clean poster + custom play button. The real player loads only on click.
+        const posterImg = posterSrc
+          ? `<img class="video-poster-img" src="${escapeHtml(posterSrc)}" ${fallbackPoster && fallbackPoster !== posterSrc ? `data-fallback="${escapeHtml(fallbackPoster)}"` : ''} alt="${escapeHtml(item.title)}" loading="lazy">`
+          : '';
         mediaElement = `
-          <iframe 
-            src="https://www.youtube.com/embed/${parsed.videoId}?rel=0" 
-            title="${escapeHtml(item.title)}" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-            allowfullscreen 
-            loading="lazy">
-          </iframe>`;
-      } else if (parsed.isEmbed && parsed.provider === 'vimeo') {
-        mediaElement = `
-          <iframe 
-            src="https://player.vimeo.com/video/${parsed.videoId}" 
-            title="${escapeHtml(item.title)}" 
-            frameborder="0" 
-            allow="autoplay; fullscreen; picture-in-picture" 
-            allowfullscreen 
-            loading="lazy">
-          </iframe>`;
-      } else if (parsed.isEmbed && parsed.provider === 'gdrive') {
-        mediaElement = `
-          <iframe 
-            src="https://drive.google.com/file/d/${parsed.fileId}/preview" 
-            title="${escapeHtml(item.title)}" 
-            frameborder="0" 
-            allowfullscreen 
-            loading="lazy">
-          </iframe>`;
-      } else if (isVideo) {
-        mediaElement = `
-          <video 
-            class="portfolio-video" 
-            src="${escapeHtml(item.mediaUrl)}" 
-            poster="${escapeHtml(parsed.thumbnailUrl || '')}" 
-            controls 
-            playsinline 
-            preload="metadata">
-          </video>`;
+          <button type="button" class="video-poster${posterSrc ? '' : ' no-poster'}" aria-label="Play video: ${escapeHtml(item.title)}">
+            ${posterImg}
+            <span class="video-poster-shade" aria-hidden="true"></span>
+            ${categoryLabel ? `<span class="video-tag"><i aria-hidden="true"></i>${escapeHtml(categoryLabel)}</span>` : ''}
+            <span class="video-play-btn" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.6-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>
+            </span>
+            <span class="video-play-hint" aria-hidden="true">Play Video</span>
+          </button>`;
+      } else if (isVideo && playerSrc) {
+        // No thumbnail available (e.g. Vimeo / Drive without cover): show the player directly
+        mediaElement = buildInlinePlayer(parsed, item.title, false);
       } else {
         mediaElement = `
           <img 
@@ -614,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const metaHtml = metaParts.length > 0 ? metaParts.join(' <span class="meta-dot">•</span> ') : '';
 
       return `
-        <div class="portfolio-card" data-category="${item.category}" data-id="${item.id}" data-media-type="${isVideo ? 'video' : 'image'}">
+        <div class="portfolio-card" data-category="${escapeHtml(item.category)}" data-id="${escapeHtml(item.id)}" data-media-type="${isVideo ? 'video' : 'image'}">
           <div class="portfolio-media">
             ${mediaElement}
           </div>
@@ -637,12 +654,50 @@ document.addEventListener('DOMContentLoaded', () => {
       const mediaType = card.getAttribute('data-media-type');
       const id = card.getAttribute('data-id');
 
+      // Video: clicking the poster swaps it for the real player, playing in place
+      const poster = card.querySelector('.video-poster');
+      if (poster) {
+        const img = poster.querySelector('.video-poster-img');
+        if (img) {
+          const handleBrokenThumb = () => {
+            const fallback = img.getAttribute('data-fallback');
+            if (fallback) {
+              img.removeAttribute('data-fallback');
+              img.src = fallback;
+            } else {
+              img.remove();
+              poster.classList.add('no-poster');
+            }
+          };
+          img.addEventListener('error', handleBrokenThumb);
+          if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) handleBrokenThumb();
+        }
+
+        poster.addEventListener('click', () => {
+          const item = getActiveProjects().find(p => String(p.id) === id);
+          if (!item) return;
+          stopAllVideos();
+          const parsed = parseMedia(item.mediaUrl, item.mediaType, item.thumbnailUrl);
+          const media = card.querySelector('.portfolio-media');
+          const holder = document.createElement('div');
+          holder.className = 'inline-player';
+          holder.innerHTML = buildInlinePlayer(parsed, item.title, true);
+          media.appendChild(holder);
+          card.classList.add('playing');
+          const vid = holder.querySelector('video');
+          if (vid) {
+            const p = vid.play();
+            if (p && p.catch) p.catch(() => { /* browser blocked autoplay: controls are visible, user can press play */ });
+          }
+        });
+      }
+
       // Click to enlarge modal for image / design assets
       if (mediaType === 'image') {
         card.style.cursor = 'pointer';
         card.addEventListener('click', () => {
           const projects = getActiveProjects();
-          const item = projects.find(p => p.id === id);
+          const item = projects.find(p => String(p.id) === id);
           if (item) {
             openModal(item.title, item.categoryName || item.category, item.desc, item.mediaUrl, item.mediaType, item.thumbnailUrl);
           } else {
@@ -657,7 +712,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Stop whatever is playing and put the poster back on those cards
   function stopAllVideos() {
+    document.querySelectorAll('.portfolio-card .inline-player').forEach(el => el.remove());
     document.querySelectorAll('.portfolio-video').forEach(v => {
       v.pause();
       v.currentTime = 0;
@@ -669,12 +726,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPortfolioFilter = filterValue;
     const cards = document.querySelectorAll('.portfolio-card');
 
+    stopAllVideos();
+
     cards.forEach(item => {
-      const video = item.querySelector('video');
-      if (video) {
-        video.pause();
-        video.currentTime = 0;
-      }
 
       if (filterValue === 'all' || item.getAttribute('data-category') === filterValue) {
         item.style.display = 'block';
@@ -715,7 +769,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.projects) && data.projects.length > 0) {
-          localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(data.projects));
+          const fresh = JSON.stringify(data.projects);
+          let current = null;
+          try { current = localStorage.getItem(PROJECTS_STORAGE_KEY); } catch (e) { /* storage blocked */ }
+          // Only re-render when something changed, so a video the visitor started keeps playing
+          if (fresh === current) return;
+          try { localStorage.setItem(PROJECTS_STORAGE_KEY, fresh); } catch (e) { /* storage blocked */ }
           renderPortfolio();
         }
       }
